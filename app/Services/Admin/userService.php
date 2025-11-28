@@ -131,6 +131,7 @@ class UserService
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? $user->phone,
                 'dob' => $data['dob'] ?? $user->dob,
+                'type' => $data['type'] ?? $user->type ?? 1,
                 'address' => $data['address'] ?? $user->address,
                 'profile' => $profilePath,
                 'updated_date' => $user,
