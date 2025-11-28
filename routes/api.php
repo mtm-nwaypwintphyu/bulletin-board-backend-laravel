@@ -21,5 +21,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // get profile
-    Route::get('/user/profile', [AuthController::class, 'profile']); 
+    Route::get('/user/profile', [AuthController::class, 'profile']);
+
+    // update user
+    Route::put('/user/update', [App\Http\Controllers\Admin\UserController::class, 'update']);
+
+    // get all users
+    Route::get('/users',[App\Http\Controllers\Admin\UserController::class, 'index']);
+
+    // delete user
+    Route::delete('/users/{id}',[App\Http\Controllers\Admin\UserController::class, 'destroy']);
 });

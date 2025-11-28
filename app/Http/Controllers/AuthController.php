@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {   
@@ -21,6 +22,7 @@ class AuthController extends Controller
     // create user account
     public function createAccount(Request $request): JsonResponse
     {
+        // validate request 
         $validator = Validator::make($request->all(), [
             'name' => 'required',
             'email' => 'required|email',
@@ -29,17 +31,22 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
+                'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
+                'data' => []
             ], 422);
         }
 
+        // call service
         $result = $this->authService->createAccount($request->all());
 
-        return response()->json(
-            $result['success'] ? $result : ['message' => $result['message']],
-            $result['status']
-        );
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'errors' => $result['errors'] ?? [],
+            'data' => $result['user'] ?? []
+        ], $result['status']);
     }
 
     // login

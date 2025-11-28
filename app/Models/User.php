@@ -35,4 +35,9 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+    // get creator
+    public function creator() {
+        return $this->belongsTo(User::class, 'create_user_id');
+    }
 }

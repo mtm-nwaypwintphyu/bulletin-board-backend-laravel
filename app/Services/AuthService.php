@@ -5,95 +5,73 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
+
 class AuthService
-{ 
-  // create User by user
-  public function createUser(array $data): array
-  {
+{
+  // create user account
+  public function createAccount(array $data): array
+  { 
     try {
-        // check email
-        if (User::where('email', $data['email'])->exists()) {
-          return [
-            'success' => false,
-            'message' => 'Email already exists',
-            'status' => 409
-        ];
-        }
+        $errors = [];
 
         // check name
-        if (User::where('name',$data['name'])->exists()) {
-          return [
-            'success' => false,
-            'message' => 'Name already exists',
-            'status' => 409
-          ];
+        if (User::where('name', $data['name'])->exists()) {
+            $errors['name'][] = 'Name already exists!';
         }
 
-        // create user
-        $user = User::create([
-          'name' => $data['name'],
-          'email' => $data['email'],
-          'password' => Hash::make($data['password']),
-          'type' => $data['type'] ?? '1',
-          'profile' => $data['profile'] ?? null,
-          'phone' => $data['phone'] ?? null,
-          'address' => $data['address'] ?? null,
-          'dob' => $data['dob'] ?? null,
-          'create_user_id' => $data['create_user_id'] ?? 1,
-          'updated_user_id' => $data['updated_user_id'] ?? 1,
-          'deleted_user_id' => $data['deleted_user_id'] ?? null,
-        ]);
-        return [
-              'success' => true,
-              'message' => 'User registered successfully',
-              'user' => $user,
-              'status' => 201
-          ];
+        // check email
+        if (User::where('email', $data['email'])->exists()) {
+            $errors['email'][] = 'Email already exists!';
+        }
 
+        // return validation errors
+        if (!empty($errors)) {
+            return [
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $errors,
+                'user' => null,
+                'status' => 422
+            ];
+        }
 
-    } catch (\Exception $e) {
-    return [
-              'success' => false,
-              'message' => 'Server error: ' . $e->getMessage(),
-              'status' => 500
-          ];
-    }
-  }
+        $uploadPath = public_path('uploads');
 
-  // Create user account by userself
-  public function createAccount(array $data): array
-  {
-      try {
-          // check name
-          if (User::where('name', $data['name'])->exists()) {
-              return [
-                  'success' => false,
-                  'message' => 'Name already exists',
-                  'status' => 409
-              ];
-          }
+        if (!file_exists($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
 
-            // check email
-          if (User::where('email', $data['email'])->exists()) {
-              return [
-                  'success' => false,
-                  'message' => 'Email already exists',
-                  'status' => 409
-              ];
-          }
-
-          // Create the user
+        if (!empty($data['profile'])) {
+            // remove prefix
+            $image = preg_replace('/^data:image\/\w+;base64,/', '', $data['profile']);
+            // replace space with plus sign
+            $image = str_replace(' ', '+', $image);
+            // generate unique file name
+            $imageName = time() . '_' . uniqid() . '.jpg';
+            // save decoded image to server
+            file_put_contents($uploadPath . '/' . $imageName, base64_decode($image));
+            $profilePath = 'uploads/' . $imageName;
+        } else {
+            $profilePath = null;
+        }
+          // create user
           $user = User::create([
-              'name' => $data['name'],
-              'email' => $data['email'],
-              'password' => Hash::make($data['password']),
-              'create_user_id' => 1,
-              'updated_user_id' => 1,
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'phone' => $data['phone'] ?? null,
+                'type'=> $data['type'] ?? 1,
+                'dob' => $data['dob'] ?? null,
+                'address' => $data['address'] ?? null,
+                'profile' => $profilePath ?? null,
+                'create_user_id' => $data['current_user_id'] ?? 1,
+                'updated_user_id' => $data['current_user_id'] ?? 1,
           ]);
 
           return [
               'success' => true,
               'message' => 'Account created successfully',
+              'errors' => [],
               'user' => $user,
               'status' => 201
           ];
@@ -101,6 +79,8 @@ class AuthService
           return [
               'success' => false,
               'message' => 'Server error: ' . $e->getMessage(),
+              'errors' => [],
+              'user' => null,
               'status' => 500
           ];
       }
