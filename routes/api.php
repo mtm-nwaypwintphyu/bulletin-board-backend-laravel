@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PostController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,5 +22,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // get profile
-    Route::get('/user/profile', [AuthController::class, 'profile']); 
+    Route::get('/user/profile', [AuthController::class, 'profile']);
+
+    // create post
+    Route::post('/posts/create', [PostController::class, 'create']);
+
+    // get all post
+    Route::get('/posts', [PostController::class, 'index']);
+
+    // delete post
+    Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+
+    // post detail
+    Route::get('/posts/{id}', [PostController::class, 'detail']);
+
+    // update post
+    Route::put('/post/{id}', [PostController::class, 'update']);
 });
