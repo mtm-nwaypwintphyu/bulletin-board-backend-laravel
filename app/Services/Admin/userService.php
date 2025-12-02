@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use App\Enums\UserTypeEnum;
+use Illuminate\Support\Facades\Validator;
 
 class UserService
 {
@@ -189,4 +190,90 @@ class UserService
             ];
         }
     }
+
+    // import user csv
+    public function importUsersFromCsv($file, $header, User $user): array
+    {
+        try {
+            $requiredHeaders = ['name', 'email', 'phone', 'address', 'dob'];
+
+            if (array_diff($requiredHeaders, $header) || array_diff($header, $requiredHeaders)) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid CSV headers. Please use the template.',
+                    'errors' => [],
+                    'data' => [],
+                    'status' => 422
+                ];
+            }
+
+            $createdUsers = [];
+            $errors = [];
+            $rowNumber = 1;
+
+            while (($row = fgetcsv($file)) !== false) {
+                $rowNumber++;
+                $data = array_combine($header, $row);
+
+                $validator = Validator::make($data, [
+                    'name' => 'required|string|max:255',
+                    'email' => 'required|email|unique:users,email',
+                    'phone' => 'nullable|string|max:20',
+                    'address' => 'nullable|string|max:255',
+                    'dob' => 'nullable|date',
+                ]);
+
+                if ($validator->fails()) {
+                    $rowErrors = implode(', ', $validator->errors()->all());
+                    $errors[] = "Row $rowNumber: $rowErrors";
+                    continue;
+                }
+
+                if (User::where('email', $data['email'])->exists()) {
+                    $errors[] = "Row $rowNumber: Duplicate email.";
+                    continue;
+                }
+
+                $newUser = User::create([
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'phone' => $data['phone'] ?? null,
+                    'address' => $data['address'] ?? null,
+                    'dob' => $data['dob'] ?? null,
+                    'type' => UserTypeEnum::User,
+                    'password' => bcrypt('password123'),
+                    'create_user_id' => $user->id,
+                    'updated_user_id' => $user->id
+                ]);
+
+                $createdUsers[] = $newUser;
+            }
+
+            $message = "";
+            if (count($createdUsers) > 0) {
+                $message = count($createdUsers) . ' users imported successfully.';
+            } else {
+                $message = 'Duplicate user name or email, no user is imported.';
+            }
+
+            return [
+                'success' => true,
+                'message' => $message,
+                'errors' => $errors,
+                'data' => $createdUsers,
+                'status' => 200
+            ];
+
+        } catch (\Exception $e) {
+            \Log::error('Error importing users', ['exception' => $e]);
+            return [
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'errors' => [],
+                'data' => [],
+                'status' => 500
+            ];
+        }
+    }
+
 }

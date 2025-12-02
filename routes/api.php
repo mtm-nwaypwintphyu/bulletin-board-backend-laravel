@@ -31,4 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // delete user
     Route::delete('/users/{id}',[App\Http\Controllers\Admin\UserController::class, 'destroy']);
+
+    // upload user csv
+    Route::post('/users/import',[App\Http\Controllers\Admin\UserController::class, 'import']);
 });

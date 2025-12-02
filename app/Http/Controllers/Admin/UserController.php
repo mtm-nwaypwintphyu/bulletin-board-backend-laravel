@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -136,6 +137,50 @@ class UserController extends Controller
             'message' => $result['message'],
             'errors' => $result['errors'] ?? [],
             'data' => $result['user'] ?? []
+        ], $result['status']);
+    }
+
+    // user csv import
+    public function import(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        Log::info('CSV uploaded by user ',['user'=> $request->all()]);
+
+        if ($user->type !== UserTypeEnum::Admin){
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to import users!',
+                'errors' => [],
+                'data' => []
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|file|mimes:csv,txt',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+                'data' => []
+            ], 422);
+        }
+
+        $path = $request->file('file')->getRealPath();
+        $file = fopen($path, 'r');
+        
+        $header = fgetcsv($file);
+
+        $result = $this->userService->importUsersFromCsv($file, $header, $user);
+
+        fclose($file);
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'data' => $result['data'],
+            'errors' => $result['errors'] ?? [],
         ], $result['status']);
     }
 }
