@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 
 use App\Services\PostService;
 use App\Models\Post;
+use App\Models\PostHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -14,12 +15,11 @@ use Illuminate\Support\Facades\Log;
 class PostController extends Controller
 {
   protected $postService;
-  protected $currentUser;
 
   public function __construct(PostService $postService)
   {
     $this->postService = $postService;
-    $this->currentUser = Auth::user();
+    auth()->user = Auth::user();
   }
 
   // create post
@@ -42,7 +42,7 @@ class PostController extends Controller
     }
 
     // call service
-    $result = $this->postService->create($request->all(),$this->currentUser->id);
+    $result = $this->postService->create($request->all(),auth()->user->id);
     return response()->json([
       'success' => $result['success'],
       'message' => $result['message'],
@@ -59,7 +59,7 @@ class PostController extends Controller
     $page = (int) $request->query('page',1);
 
     // call service
-    $result = $this->postService->getAllPosts($this->currentUser, $search, $perPage, $page);
+    $result = $this->postService->getAllPosts(auth()->user, $search, $perPage, $page);
 
     return response()->json([
       'success' => $result['success'],
@@ -72,7 +72,7 @@ class PostController extends Controller
   // delete
   public function destroy(Request $request): JsonResponse
   {
-    $result = $this->postService->destroyPost($request->route('id'), $this->currentUser);
+    $result = $this->postService->destroyPost($request->route('id'), auth()->user);
 
     return response()->json([
       'success' => $result['success'],
@@ -84,8 +84,9 @@ class PostController extends Controller
 
   // post detail
   public function detail(Request $request): JsonResponse
-  {
-    $result = $this->postService->detailPost($request->route('id'), $this->currentUser);
+  { 
+    $postId = (int) $request->route('id');
+    $result = $this->postService->detailPost($postId, auth()->user);
 
     return response()->json([
       'success' => $result['success'],
@@ -105,13 +106,71 @@ class PostController extends Controller
         'status' => 'nullable|integer|in:0,1'
     ]);
 
-    $result = $this->postService->updatePost($request->all(), $this->currentUser, $request->route('id'));
+    $result = $this->postService->updatePost($request->all(), auth()->user, $request->route('id'));
 
     return response()->json([
       'success' => $result['success'],
       'message' => $result['message'],
       'errors' =>$result['errors'] ?? [],
       'data' => $result['post'] ?? []
+    ], $result['status']);
+  }
+
+  // import post csv
+  public function import(Request $request): JsonResponse
+  {
+    $result = $this->postService->importPostsFromCsv($request->file('file'), auth()->user->id);
+
+    return response()->json([
+      'success' => $result['success'],
+      'message' => $result['message'],
+      'errors' => $result['errors'] ?? [],
+      'data' => $result['data'] ?? []
+    ], $result['status']);
+  }
+
+  // get import history
+  public function importHistory(Request $request): JsonResponse
+  { 
+
+    $result = $this->postService->getCsvImportHistory(auth()->user->id);
+
+    $history = $result['history']->load('user');
+
+    return response()->json([
+      'success' => $result['success'],
+      'message' => $result['message'],
+      'errors' => $result['errors'] ?? [],
+      'data' => $result['history'] ?? []
+    ], $result['status']);
+  }
+
+  // delete post history
+  public function deleteImportHistory(Request $request): JsonResponse
+  {
+    $result = $this->postService->destroyImportHistory($request->route('id'), auth()->user());
+
+    return response()->json([
+      'success' => $result['success'],
+      'message' => $result['message'],
+      'errors' =>$result['errors'] ?? [],
+      'data' => $result['post'] ?? []
+    ], $result['status']);
+  }
+
+  // get post history
+  public function postHistory(Request $request): JsonResponse
+  { 
+
+    $result = $this->postService->getPostHistory(auth()->user->id);
+
+    $history = $result['history']->load('post','user');
+
+    return response()->json([
+      'success' => $result['success'],
+      'message' => $result['message'],
+      'errors' => $result['errors'] ?? [],
+      'data' => $result['history'] ?? []
     ], $result['status']);
   }
 }
