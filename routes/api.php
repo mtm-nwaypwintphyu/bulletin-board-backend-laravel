@@ -13,6 +13,12 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 // create user account (public)
 Route::post('/create-account', [AuthController::class, 'createAccount']);
 
+// forgot password
+Route::post('/password/forgot', [App\Http\Controllers\PasswordController::class, 'forgot']);
+
+// password reset
+Route::post('/password/reset', [App\Http\Controllers\PasswordController::class, 'reset']);
+
 Route::middleware('auth:sanctum')->group(function () {
     // create user by admin
     Route::post('/create-user', [App\Http\Controllers\Admin\UserController::class, 'createUser']);
@@ -34,4 +40,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // upload user csv
     Route::post('/users/import',[App\Http\Controllers\Admin\UserController::class, 'import']);
+
+    // change password
+    Route::post('/password/change',[App\Http\Controllers\PasswordController::class, 'change']);
+
 });
